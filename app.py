@@ -485,5 +485,5 @@ if __name__ == '__main__':
   except Exception as e:
       logger.error(f"Error al conectar a la base de datos: {str(e)}")
   
-  app.run(debug=True, host='0.0.0.0', port=5000)
+  app.run(host='0.0.0.0', port=5000)
 
