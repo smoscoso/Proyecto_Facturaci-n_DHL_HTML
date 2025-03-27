@@ -1,0 +1,5 @@
+Flask==2.0.3
+python-dotenv==0.19.2
+pymongo[srv]==4.2.0
+certifi==2022.12.7
+gunicorn==20.1.0
