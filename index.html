@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facturas de Transporte - DHL</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap">
+    <meta name="description" content="Sistema de gestión de facturas de transporte DHL">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    
+    <header class="header">
+        <div class="container header-container">
+            <div class="logo-title">
+                <img src="images/dhl-logo.png" alt="DHL Logo" class="logo hover-scale">
+                <h1 class="title">Facturas de Transporte</h1>
+            </div>
+            <nav class="nav" aria-label="Navegación principal">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="documents.html" class="nav-link">Ver Documentos</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main" id="main-content">
+        <div class="container">
+            <div class="card animate-slideInUp">
+                <div class="card-header">
+                    <h2 class="card-title">Gestión de Facturas</h2>
+                    <p class="card-description">Suba y gestione sus facturas de transporte</p>
+                </div>
+                <div class="card-content">
+                    <form id="invoiceForm" class="form">
+                        <!-- File Upload Section -->
+                        <div class="form-group">
+                            <label for="file-upload" class="form-label">📄 Archivo</label>
+                            <div class="file-upload" tabindex="0" role="button" aria-controls="file-upload">
+                                <div class="file-info">
+                                    <span class="file-icon">📄</span>
+                                    <span id="fileName" class="file-name">Seleccione un archivo o arrastre aquí</span>
+                                </div>
+                                <label for="file-upload" class="btn btn-primary">Examinar</label>
+                                <input id="file-upload" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg">
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="progress-container">
+                            <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+                        </div>
+
+                        <!-- Email Field -->
+                        <div class="form-group">
+                            <label for="email" class="form-label">✉️ Correo electrónico</label>
+                            <input id="email" type="email" class="form-input" placeholder="ejemplo@correo.com" required>
+                        </div>
+
+                        <!-- Status Field -->
+                        <div class="form-group">
+                            <label for="status" class="form-label">📊 Estado</label>
+                            <select id="status" class="form-select">
+                                <option value="Válida">Válida</option>
+                                <option value="Inválida">Inválida</option>
+                                <option value="Pendiente" selected>Pendiente</option>
+                            </select>
+                        </div>
+
+                        <!-- Observations Field -->
+                        <div class="form-group">
+                            <label for="observations" class="form-label">📝 Observaciones</label>
+                            <textarea id="observations" class="form-textarea" placeholder="Ingrese observaciones" disabled></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer">
+                    <button type="button" class="btn btn-outline" onclick="location.href='documents.html'">📂 Ver Documentos</button>
+                    <button type="button" class="btn btn-success" id="saveButton">💾 Guardar</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">© Facturación <span id="currentYear"></span>. Todos los derechos reservados.</p>
+            <a href="https://www.dhl.com/co-es/home.html" class="footer-link" target="_blank" rel="noopener noreferrer">
+                Visite nuestro sitio
+            </a>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <div class="toast-icon">✅</div>
+            <div class="toast-message">
+                <div class="toast-title">Éxito</div>
+                <div class="toast-description">Documento guardado correctamente</div>
+            </div>
+            <button class="toast-close" aria-label="Cerrar notificación">×</button>
+        </div>
+    </div>
+
+    <script>
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // File upload handling
+        const fileUpload = document.getElementById('file-upload');
+        const fileName = document.getElementById('fileName');
+        const progressBar = document.getElementById('progressBar');
+        const statusSelect = document.getElementById('status');
+        const observations = document.getElementById('observations');
+        const saveButton = document.getElementById('saveButton');
+        const toast = document.getElementById('toast');
+        const toastClose = document.querySelector('.toast-close');
+
+        // Manejar clic en el área de carga de archivos
+        document.querySelector('.file-upload').addEventListener('click', function(e) {
+            // Evitar que se active si se hace clic en el botón de examinar
+            if (!e.target.closest('label')) {
+                document.getElementById('file-upload').click();
+            }
+        });
+
+        // Handle file selection
+        fileUpload.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                
+                // Validate file type
+                const allowedTypes = ['.pdf', '.png', '.jpg', '.jpeg'];
+                const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                
+                if (!allowedTypes.some(type => fileExtension.includes(type))) {
+                    showToast('Error', 'Tipo de archivo no permitido', 'error');
+                    return;
+                }
+                
+                // Validate file size (10MB max)
+                if (file.size > 10 * 1024 * 1024) {
+                    showToast('Error', 'El archivo excede el tamaño máximo permitido (10MB)', 'error');
+                    return;
+                }
+                
+                fileName.textContent = file.name;
+                simulateProgress();
+            }
+        });
+
+        // Handle status change
+        statusSelect.addEventListener('change', function() {
+            if (this.value === 'Inválida') {
+                observations.disabled = false;
+                observations.focus();
+            } else {
+                observations.value = '';
+                observations.disabled = true;
+            }
+        });
+
+        // Simulate progress bar
+        function simulateProgress() {
+            let width = 0;
+            progressBar.style.width = '0%';
+            
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressBar.style.width = '0%';
+                    }, 500);
+                    return;
+                }
+                width += 10;
+                progressBar.style.width = width + '%';
+            }, 100);
+        }
+
+        // Save button click handler
+        saveButton.addEventListener('click', function(e) {
+            // Prevenir múltiples clics
+            if (this.disabled) return;
+            
+            // Validate form
+            const emailInput = document.getElementById('email');
+            const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$/;
+            
+            if (!fileUpload.files.length) {
+                showToast('Error', 'Debe seleccionar un archivo primero', 'error');
+                return;
+            }
+            
+            if (!emailRegex.test(emailInput.value)) {
+                showToast('Error', 'Formato de email inválido', 'error');
+                return;
+            }
+            
+            if (statusSelect.value === 'Inválida' && !observations.value) {
+                showToast('Error', 'Debe ingresar observaciones para el Documento inválido', 'error');
+                return;
+            }
+            
+            // Disable button and show loading state
+            this.disabled = true;
+            this.textContent = 'Guardando...';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', fileUpload.files[0]);
+            formData.append('email', emailInput.value);
+            formData.append('status', statusSelect.value);
+            formData.append('observations', observations.value);
+            
+            // Send data to server
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Éxito', 'Documento guardado correctamente', 'success');
+                    
+                    // Reset form
+                    fileName.textContent = 'Seleccione un archivo';
+                    emailInput.value = '';
+                    statusSelect.value = 'Pendiente';
+                    observations.value = '';
+                    observations.disabled = true;
+                    fileUpload.value = '';
+                } else {
+                    showToast('Error', data.error || 'Error al guardar documento', 'error');
+                }
+                
+                // Re-enable button
+                saveButton.disabled = false;
+                saveButton.textContent = '💾 Guardar';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error', 'Error de conexión al servidor', 'error');
+                
+                // Re-enable button
+                saveButton.disabled = false;
+                saveButton.textContent = '💾 Guardar';
+            });
+        });
+
+        // Toast handling
+        function showToast(title, message, type = 'success') {
+            const toastElement = document.getElementById('toast');
+            const toastTitle = document.querySelector('.toast-title');
+            const toastDescription = document.querySelector('.toast-description');
+            const toastIcon = document.querySelector('.toast-icon');
+            
+            toastTitle.textContent = title;
+            toastDescription.textContent = message;
+            
+            // Set icon and class based on type
+            if (type === 'error') {
+                toastIcon.textContent = '❌';
+                toastElement.className = 'toast toast-error show';
+            } else if (type === 'warning') {
+                toastIcon.textContent = '⚠️';
+                toastElement.className = 'toast toast-warning show';
+            } else {
+                toastIcon.textContent = '✅';
+                toastElement.className = 'toast toast-success show';
+            }
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                toastElement.className = toastElement.className.replace('show', '');
+            }, 5000);
+        }
+
+        // Close toast on click
+        toastClose.addEventListener('click', function() {
+            toast.className = toast.className.replace('show', '');
+        });
+
+        // Drag and drop functionality for file upload
+        const fileUploadArea = document.querySelector('.file-upload');
+        let isDragging = false;
+
+        // Prevenir comportamiento predeterminado para eventos de arrastrar
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileUploadArea.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        // Resaltar área cuando se arrastra un archivo
+        fileUploadArea.addEventListener('dragenter', function(e) {
+            if (!isDragging) {
+                isDragging = true;
+                this.classList.add('file-upload-highlight');
+            }
+        }, false);
+
+        fileUploadArea.addEventListener('dragover', function(e) {
+            isDragging = true;
+            this.classList.add('file-upload-highlight');
+        }, false);
+
+        // Quitar resaltado cuando se deja de arrastrar
+        fileUploadArea.addEventListener('dragleave', function(e) {
+            // Verificar si el cursor realmente salió del elemento
+            if (!e.currentTarget.contains(e.relatedTarget)) {
+                isDragging = false;
+                this.classList.remove('file-upload-highlight');
+            }
+        }, false);
+
+        // Manejar soltar archivo
+        fileUploadArea.addEventListener('drop', function(e) {
+            isDragging = false;
+            this.classList.remove('file-upload-highlight');
+
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length > 0) {
+                fileUpload.files = files;
+                const event = new Event('change');
+                fileUpload.dispatchEvent(event);
+            }
+        }, false);
+    </script>
+</body>
+</html>
+

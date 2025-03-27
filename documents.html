@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos Almacenados - DHL</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap">
+    <meta name="description" content="Visualización y gestión de documentos almacenados en el sistema DHL">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+    
+    <header class="header">
+        <div class="container header-container">
+            <div class="logo-title">
+                <img src="images/dhl-logo.png" alt="DHL Logo" class="logo hover-scale">
+                <h1 class="title">Facturas de Transporte</h1>
+            </div>
+            <nav class="nav" aria-label="Navegación principal">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link">Inicio</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main" id="main-content">
+        <div class="container">
+            <h1 class="page-title animate-fadeIn">Documentos Almacenados</h1>
+            
+            <div class="search-bar animate-slideInUp">
+                <div class="search-input-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="search" id="searchInput" class="search-input" placeholder="Buscar por nombre de archivo..." aria-label="Buscar documentos">
+                </div>
+                <button id="refreshButton" class="btn btn-outline btn-icon" aria-label="Refrescar lista">
+                    🔄
+                </button>
+            </div>
+
+            <div class="table-container animate-slideInUp">
+                <table class="table" aria-label="Tabla de documentos">
+                    <thead>
+                        <tr>
+                            <th scope="col">Nombre del Archivo</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Observaciones</th>
+                            <th scope="col">Fecha de Subida</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="documentsTableBody">
+                        <!-- Los documentos se cargarán dinámicamente desde el servidor -->
+                        <tr id="loading-row">
+                            <td colspan="5" class="text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                    <div class="loading-spinner"></div>
+                                    <span>Cargando documentos...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Empty state -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📄</div>
+                <h2 class="empty-state-title">No hay documentos</h2>
+                <p class="empty-state-description">No se encontraron documentos en el sistema. Suba un documento desde la página de inicio.</p>
+                <a href="index.html" class="btn btn-primary mt-3 hover-lift">Subir Documento</a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="footer-text">© Facturación <span id="currentYear"></span>. Todos los derechos reservados.</p>
+            <a href="https://www.dhl.com/co-es/home.html" class="footer-link" target="_blank" rel="noopener noreferrer">
+                Visite nuestro sitio
+            </a>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <div class="toast-icon">✅</div>
+            <div class="toast-message">
+                <div class="toast-title">Éxito</div>
+                <div class="toast-description">Documento descargado correctamente</div>
+            </div>
+            <button class="toast-close" aria-label="Cerrar notificación">×</button>
+        </div>
+    </div>
+
+    <!-- Modal para actualizar estado -->
+    <div id="updateModal" class="modal" aria-labelledby="updateModalTitle" aria-modal="true" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="updateModalTitle">Actualizar Estado</h3>
+                <button class="modal-close" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="updateForm" class="form">
+                    <input type="hidden" id="updateDocId" name="doc_id">
+                    
+                    <div class="form-group">
+                        <label for="updateStatus" class="form-label">Estado</label>
+                        <select id="updateStatus" name="status" class="form-select">
+                            <option value="Válida">Válida</option>
+                            <option value="Inválida">Inválida</option>
+                            <option value="Pendiente">Pendiente</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="updateObservations" class="form-label">Observaciones</label>
+                        <textarea id="updateObservations" name="observations" class="form-textarea"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancelUpdateBtn">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmUpdateBtn">Actualizar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para confirmar eliminación -->
+    <div id="deleteModal" class="modal" aria-labelledby="deleteModalTitle" aria-modal="true" role="dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="deleteModalTitle">Confirmar Eliminación</h3>
+                <button class="modal-close" aria-label="Cerrar modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar el documento "<span id="deleteFileName"></span>"?</p>
+                <p class="text-danger"><strong>Esta acción no se puede deshacer.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancelDeleteBtn">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para visualizar documento -->
+    <div id="viewDocModal" class="modal document-modal" aria-labelledby="viewDocModalTitle" aria-modal="true" role="dialog">
+        <div class="modal-content document-modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="viewDocModalTitle">Visualización de Documento</h3>
+                <div class="modal-actions">
+                    <button id="downloadCurrentBtn" class="btn btn-outline btn-sm" aria-label="Descargar documento actual">
+                        ⬇️ Descargar
+                    </button>
+                    <button class="modal-close" aria-label="Cerrar modal">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body document-viewer">
+                <div id="documentLoading" class="document-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Cargando documento...</p>
+                </div>
+                <div id="documentContainer" class="document-container">
+                    <!-- El documento se cargará aquí -->
+                    <iframe id="documentFrame" class="document-frame" title="Visualizador de documento"></iframe>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="closeViewBtn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set current year in footer
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // DOM elements
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('documentsTableBody');
+        const refreshButton = document.getElementById('refreshButton');
+        const toast = document.getElementById('toast');
+        const toastClose = document.querySelector('.toast-close');
+        const updateModal = document.getElementById('updateModal');
+        const updateForm = document.getElementById('updateForm');
+        const updateStatus = document.getElementById('updateStatus');
+        const updateObservations = document.getElementById('updateObservations');
+        const cancelUpdateBtn = document.getElementById('cancelUpdateBtn');
+        const confirmUpdateBtn = document.getElementById('confirmUpdateBtn');
+        const modalClose = document.querySelector('.modal-close');
+        const deleteModal = document.getElementById('deleteModal');
+        const deleteFileName = document.getElementById('deleteFileName');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteModalClose = deleteModal.querySelector('.modal-close');
+        const emptyState = document.getElementById('emptyState');
+        
+        // Elementos del visor de documentos
+        const viewDocModal = document.getElementById('viewDocModal');
+        const viewDocModalTitle = document.getElementById('viewDocModalTitle');
+        const documentFrame = document.getElementById('documentFrame');
+        const documentLoading = document.getElementById('documentLoading');
+        const documentContainer = document.getElementById('documentContainer');
+        const closeViewBtn = document.getElementById('closeViewBtn');
+        const viewDocModalClose = viewDocModal.querySelector('.modal-close');
+        const downloadCurrentBtn = document.getElementById('downloadCurrentBtn');
+
+        // Load documents on page load
+        document.addEventListener('DOMContentLoaded', loadDocuments);
+
+        // Search filter
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = tableBody.querySelectorAll('tr:not(#loading-row)');
+            
+            let hasVisibleRows = false;
+            
+            rows.forEach(row => {
+                const fileName = row.querySelector('.file-name')?.textContent.toLowerCase();
+                if (fileName && fileName.includes(searchTerm)) {
+                    row.style.display = '';
+                    hasVisibleRows = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Show empty state if no results
+            if (rows.length > 0 && !hasVisibleRows) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center p-4">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">🔍</div>
+                                <h3 class="empty-state-title">No se encontraron resultados</h3>
+                                <p class="empty-state-description">No hay documentos que coincidan con su búsqueda "${searchInput.value}"</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        // Refresh button
+        refreshButton.addEventListener('click', function() {
+            // Add rotation animation
+            this.classList.add('animate-spin');
+            
+            // Remove animation after 1 second
+            setTimeout(() => {
+                this.classList.remove('animate-spin');
+            }, 1000);
+            
+            searchInput.value = '';
+            loadDocuments();
+        });
+
+        // Load documents from server
+        function loadDocuments() {
+            // Show loading row
+            tableBody.innerHTML = `
+                <tr id="loading-row">
+                    <td colspan="5" class="text-center p-4">
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+                            <div class="loading-spinner"></div>
+                            <span>Cargando documentos...</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            // Hide empty state
+            emptyState.style.display = 'none';
+            
+            // Fetch documents from server
+            fetch('/documents')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayDocuments(data.documents);
+                    } else {
+                        showToast('Error', data.error || 'Error al cargar documentos', 'error');
+                        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Error al cargar documentos</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Error', 'Error de conexión al servidor', 'error');
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Error de conexión al servidor</td></tr>';
+                });
+        }
+
+        // Display documents in table
+        function displayDocuments(documents) {
+            if (!documents || documents.length === 0) {
+                tableBody.innerHTML = '';
+                emptyState.style.display = 'flex';
+                return;
+            }
+            
+            tableBody.innerHTML = '';
+            emptyState.style.display = 'none';
+            
+            documents.forEach(doc => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', doc._id);
+                row.className = 'animate-fadeIn';
+                
+                // File name cell
+                const nameCell = document.createElement('td');
+                nameCell.className = 'file-name';
+                nameCell.textContent = doc.nombre_archivo;
+                row.appendChild(nameCell);
+                
+                // Status cell
+                const statusCell = document.createElement('td');
+                const statusBadge = document.createElement('span');
+                statusBadge.textContent = doc.estado;
+                
+                if (doc.estado === 'Válida') {
+                    statusBadge.className = 'badge badge-success';
+                } else if (doc.estado === 'Inválida') {
+                    statusBadge.className = 'badge badge-error';
+                } else {
+                    statusBadge.className = 'badge badge-outline';
+                }
+                
+                statusCell.appendChild(statusBadge);
+                row.appendChild(statusCell);
+                
+                // Observations cell
+                const obsCell = document.createElement('td');
+                obsCell.textContent = doc.observaciones || 'Ninguna';
+                row.appendChild(obsCell);
+                
+                // Date cell
+                const dateCell = document.createElement('td');
+                dateCell.textContent = doc.fecha_local || new Date(doc.fecha_subida).toLocaleString();
+                row.appendChild(dateCell);
+                
+                // Actions cell
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'actions-cell';
+                
+                // View button
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'btn btn-ghost btn-sm hover-lift';
+                viewBtn.innerHTML = '👁️ Ver';
+                viewBtn.setAttribute('aria-label', `Ver ${doc.nombre_archivo}`);
+                viewBtn.addEventListener('click', () => viewDocument(doc._id, doc.nombre_archivo));
+                
+                // Download button
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn btn-ghost btn-sm hover-lift';
+                downloadBtn.innerHTML = '⬇️ Descargar';
+                downloadBtn.setAttribute('aria-label', `Descargar ${doc.nombre_archivo}`);
+                downloadBtn.addEventListener('click', () => downloadDocument(doc._id, doc.nombre_archivo));
+                
+                // Update button
+                const updateBtn = document.createElement('button');
+                updateBtn.className = 'btn btn-ghost btn-sm hover-lift';
+                updateBtn.innerHTML = '✏️ Actualizar';
+                updateBtn.setAttribute('aria-label', `Actualizar ${doc.nombre_archivo}`);
+                updateBtn.addEventListener('click', () => openUpdateModal(doc));
+                
+                // Delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-ghost btn-sm btn-danger hover-lift';
+                deleteBtn.innerHTML = '🗑️ Eliminar';
+                deleteBtn.setAttribute('aria-label', `Eliminar ${doc.nombre_archivo}`);
+                deleteBtn.addEventListener('click', () => openDeleteModal(doc._id, doc.nombre_archivo));
+                
+                actionsCell.appendChild(viewBtn);
+                actionsCell.appendChild(downloadBtn);
+                actionsCell.appendChild(updateBtn);
+                actionsCell.appendChild(deleteBtn);
+                row.appendChild(actionsCell);
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // View document
+        function viewDocument(docId, fileName) {
+            // Set modal title
+            viewDocModalTitle.textContent = `Visualización: ${fileName}`;
+            
+            // Show loading state
+            documentLoading.style.display = 'flex';
+            documentContainer.style.display = 'none';
+            
+            // Set download button data
+            downloadCurrentBtn.setAttribute('data-id', docId);
+            downloadCurrentBtn.setAttribute('data-name', fileName);
+            
+            // Show modal
+            viewDocModal.style.display = 'block';
+            viewDocModal.classList.add('show');
+            
+            // Determine file type from extension
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            
+            // Create URL for viewing
+            const viewUrl = `/view-document/${docId}`;
+            
+            // Load document in iframe
+            documentFrame.src = viewUrl;
+            
+            // Handle iframe load event
+            documentFrame.onload = function() {
+                documentLoading.style.display = 'none';
+                documentContainer.style.display = 'block';
+            };
+            
+            // Handle iframe error
+            documentFrame.onerror = function() {
+                documentLoading.style.display = 'none';
+                documentContainer.innerHTML = `
+                    <div class="document-error">
+                        <div class="empty-state-icon">❌</div>
+                        <h3 class="empty-state-title">Error al cargar el documento</h3>
+                        <p class="empty-state-description">No se pudo cargar el documento. Intente descargarlo.</p>
+                    </div>
+                `;
+                documentContainer.style.display = 'block';
+            };
+        }
+
+        // Download current document button
+        downloadCurrentBtn.addEventListener('click', function() {
+            const docId = this.getAttribute('data-id');
+            const fileName = this.getAttribute('data-name');
+            downloadDocument(docId, fileName);
+        });
+
+        // Download document
+        function downloadDocument(docId, fileName) {
+            showToast('Descarga iniciada', `Descargando ${fileName}`, 'success');
+            
+            // Crear un formulario para enviar la solicitud POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/download';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'doc_id';
+            input.value = docId;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // Open update modal
+        function openUpdateModal(doc) {
+            document.getElementById('updateDocId').value = doc._id;
+            document.getElementById('updateStatus').value = doc.estado;
+            document.getElementById('updateObservations').value = doc.observaciones || '';
+            
+            // Enable/disable observations based on status
+            if (doc.estado === 'Inválida') {
+                updateObservations.disabled = false;
+            } else {
+                updateObservations.disabled = true;
+            }
+            
+            updateModal.style.display = 'block';
+            updateModal.classList.add('show');
+            
+            // Focus on first input
+            setTimeout(() => {
+                updateStatus.focus();
+            }, 100);
+        }
+
+        // Open delete modal
+        function openDeleteModal(docId, fileName) {
+            document.getElementById('deleteFileName').textContent = fileName;
+            confirmDeleteBtn.setAttribute('data-id', docId);
+            confirmDeleteBtn.setAttribute('data-name', fileName);
+            deleteModal.style.display = 'block';
+            deleteModal.classList.add('show');
+        }
+
+        // Handle status change in update modal
+        updateStatus.addEventListener('change', function() {
+            if (this.value === 'Inválida') {
+                updateObservations.disabled = false;
+                updateObservations.focus();
+            } else {
+                updateObservations.disabled = true;
+            }
+        });
+
+        // Close update modal
+        function closeUpdateModal() {
+            updateModal.classList.remove('show');
+            setTimeout(() => {
+                updateModal.style.display = 'none';
+            }, 300);
+        }
+
+        // Close delete modal
+        function closeDeleteModal() {
+            deleteModal.classList.remove('show');
+            setTimeout(() => {
+                deleteModal.style.display = 'none';
+            }, 300);
+        }
+
+        // Close view document modal
+        function closeViewDocModal() {
+            viewDocModal.classList.remove('show');
+            setTimeout(() => {
+                viewDocModal.style.display = 'none';
+                documentFrame.src = 'about:blank'; // Clear iframe
+            }, 300);
+        }
+
+        // Modal close buttons
+        modalClose.addEventListener('click', closeUpdateModal);
+        cancelUpdateBtn.addEventListener('click', closeUpdateModal);
+        deleteModalClose.addEventListener('click', closeDeleteModal);
+        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+        viewDocModalClose.addEventListener('click', closeViewDocModal);
+        closeViewBtn.addEventListener('click', closeViewDocModal);
+
+        // Click outside modal to close
+        window.addEventListener('click', function(event) {
+            if (event.target === updateModal) {
+                closeUpdateModal();
+            }
+            if (event.target === deleteModal) {
+                closeDeleteModal();
+            }
+            if (event.target === viewDocModal) {
+                closeViewDocModal();
+            }
+        });
+
+        // Update document status
+        confirmUpdateBtn.addEventListener('click', function() {
+            const docId = document.getElementById('updateDocId').value;
+            const status = updateStatus.value;
+            const observations = updateObservations.value;
+            
+            if (status === 'Inválida' && !observations) {
+                showToast('Error', 'Debe ingresar observaciones para el Documento inválido', 'error');
+                return;
+            }
+            
+            // Show loading state
+            confirmUpdateBtn.disabled = true;
+            confirmUpdateBtn.innerHTML = '<div class="loading-spinner" style="width: 1rem; height: 1rem;"></div> Actualizando...';
+            
+            // Send update request
+            fetch('/update-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    doc_id: docId,
+                    status: status,
+                    observations: observations
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Éxito', 'Estado actualizado correctamente', 'success');
+                    closeUpdateModal();
+                    loadDocuments(); // Reload documents
+                } else {
+                    showToast('Error', data.error || 'Error al actualizar estado', 'error');
+                }
+                
+                // Reset button state
+                confirmUpdateBtn.disabled = false;
+                confirmUpdateBtn.innerHTML = 'Actualizar';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error', 'Error de conexión al servidor', 'error');
+                
+                // Reset button state
+                confirmUpdateBtn.disabled = false;
+                confirmUpdateBtn.innerHTML = 'Actualizar';
+            });
+        });
+
+        // Delete document
+        confirmDeleteBtn.addEventListener('click', function() {
+            const docId = this.getAttribute('data-id');
+            const fileName = this.getAttribute('data-name');
+            
+            // Show loading state
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.innerHTML = '<div class="loading-spinner" style="width: 1rem; height: 1rem;"></div> Eliminando...';
+            
+            // Send delete request
+            fetch('/delete-document', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    doc_id: docId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Éxito', `Documento "${fileName}" eliminado correctamente`, 'success');
+                    closeDeleteModal();
+                    loadDocuments(); // Reload documents
+                } else {
+                    showToast('Error', data.error || 'Error al eliminar documento', 'error');
+                }
+                
+                // Reset button state
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.innerHTML = 'Eliminar';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error', 'Error de conexión al servidor', 'error');
+                
+                // Reset button state
+                confirmDeleteBtn.disabled = false;
+                confirmDeleteBtn.innerHTML = 'Eliminar';
+            });
+        });
+
+        // Toast handling
+        function showToast(title, message, type = 'success') {
+            const toastElement = document.getElementById('toast');
+            const toastTitle = document.querySelector('.toast-title');
+            const toastDescription = document.querySelector('.toast-description');
+            const toastIcon = document.querySelector('.toast-icon');
+            
+            toastTitle.textContent = title;
+            toastDescription.textContent = message;
+            
+            // Set icon and class based on type
+            if (type === 'error') {
+                toastIcon.textContent = '❌';
+                toastElement.className = 'toast toast-error show';
+            } else if (type === 'warning') {
+                toastIcon.textContent = '⚠️';
+                toastElement.className = 'toast toast-warning show';
+            } else {
+                toastIcon.textContent = '✅';
+                toastElement.className = 'toast toast-success show';
+            }
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                toastElement.className = toastElement.className.replace('show', '');
+            }, 5000);
+        }
+
+        // Close toast on click
+        toastClose.addEventListener('click', function() {
+            toast.className = toast.className.replace('show', '');
+        });
+
+        // Keyboard accessibility for modals
+        document.addEventListener('keydown', function(e) {
+            // Close modal on Escape key
+            if (e.key === 'Escape') {
+                if (updateModal.style.display === 'block') {
+                    closeUpdateModal();
+                }
+                if (deleteModal.style.display === 'block') {
+                    closeDeleteModal();
+                }
+                if (viewDocModal.style.display === 'block') {
+                    closeViewDocModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+
