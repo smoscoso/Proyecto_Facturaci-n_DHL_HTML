@@ -56,22 +56,23 @@ class MongoDBHandler:
         """Inserta un documento en la colección"""
         if self.collection is None:
             self.connect()
-            
+        
         try:
             # Asegurarse de que el archivo sea binario
             if 'archivo' in document and not isinstance(document['archivo'], Binary):
                 document['archivo'] = Binary(document['archivo'])
-                
+            
             document_con_fechas = {
                 **document,
                 "fecha": datetime.utcnow(),
-                "fecha_actualizacion": datetime.utcnow()
+                "fecha_actualizacion": datetime.utcnow(),
+                "email_enviado": False  # Nuevo campo para rastrear si el email fue enviado
             }
-            
+        
             result = self.collection.insert_one(document_con_fechas)
             logging.info(f"Documento insertado ID: {result.inserted_id}")
             return str(result.inserted_id)
-            
+        
         except Exception as e:
             logging.error(f"Error insertando documento: {str(e)}")
             raise
@@ -185,4 +186,29 @@ class MongoDBHandler:
             
         except Exception as e:
             logging.error(f"Error eliminando documento: {str(e)}")
+            raise
+
+    def update_email_status(self, doc_id: str, email_enviado: bool) -> None:
+        """Actualiza el estado de envío del correo de un documento"""
+        if self.collection is None:
+            self.connect()
+        
+        try:
+            result = self.collection.update_one(
+                {"_id": ObjectId(doc_id)},
+                {
+                    "$set": {
+                        "email_enviado": email_enviado,
+                        "fecha_actualizacion": datetime.utcnow()
+                    }
+                }
+            )
+        
+            if result.modified_count == 0:
+                raise ValueError(f"Documento con ID {doc_id} no encontrado o no modificado")
+            
+            logging.info(f"Estado de envío de correo del documento {doc_id} actualizado a {email_enviado}")
+        
+        except Exception as e:
+            logging.error(f"Error actualizando estado de envío de correo: {str(e)}")
             raise
