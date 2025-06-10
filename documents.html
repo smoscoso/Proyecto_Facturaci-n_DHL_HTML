@@ -49,13 +49,14 @@
                             <th scope="col">Estado</th>
                             <th scope="col">Observaciones</th>
                             <th scope="col">Fecha de Subida</th>
+                            <th scope="col">Email Enviado</th>
                             <th scope="col">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="documentsTableBody">
                         <!-- Los documentos se cargarán dinámicamente desde el servidor -->
                         <tr id="loading-row">
-                            <td colspan="5" class="text-center">
+                            <td colspan="6" class="text-center">
                                 <div class="d-flex align-items-center justify-content-center gap-2">
                                     <div class="loading-spinner"></div>
                                     <span>Cargando documentos...</span>
@@ -234,7 +235,7 @@
             if (rows.length > 0 && !hasVisibleRows) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center p-4">
+                        <td colspan="6" class="text-center p-4">
                             <div class="empty-state">
                                 <div class="empty-state-icon">🔍</div>
                                 <h3 class="empty-state-title">No se encontraron resultados</h3>
@@ -264,15 +265,15 @@
         function loadDocuments() {
             // Show loading row
             tableBody.innerHTML = `
-                <tr id="loading-row">
-                    <td colspan="5" class="text-center p-4">
-                        <div class="d-flex align-items-center justify-content-center gap-2">
-                            <div class="loading-spinner"></div>
-                            <span>Cargando documentos...</span>
-                        </div>
-                    </td>
-                </tr>
-            `;
+        <tr id="loading-row">
+            <td colspan="6" class="text-center p-4">
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <div class="loading-spinner"></div>
+                    <span>Cargando documentos...</span>
+                </div>
+            </td>
+        </tr>
+    `;
             
             // Hide empty state
             emptyState.style.display = 'none';
@@ -285,105 +286,119 @@
                         displayDocuments(data.documents);
                     } else {
                         showToast('Error', data.error || 'Error al cargar documentos', 'error');
-                        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Error al cargar documentos</td></tr>';
+                        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Error al cargar documentos</td></tr>';
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     showToast('Error', 'Error de conexión al servidor', 'error');
-                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Error de conexión al servidor</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Error de conexión al servidor</td></tr>';
                 });
         }
 
         // Display documents in table
         function displayDocuments(documents) {
-            if (!documents || documents.length === 0) {
-                tableBody.innerHTML = '';
-                emptyState.style.display = 'flex';
-                return;
-            }
-            
-            tableBody.innerHTML = '';
-            emptyState.style.display = 'none';
-            
-            documents.forEach(doc => {
-                const row = document.createElement('tr');
-                row.setAttribute('data-id', doc._id);
-                row.className = 'animate-fadeIn';
-                
-                // File name cell
-                const nameCell = document.createElement('td');
-                nameCell.className = 'file-name';
-                nameCell.textContent = doc.nombre_archivo;
-                row.appendChild(nameCell);
-                
-                // Status cell
-                const statusCell = document.createElement('td');
-                const statusBadge = document.createElement('span');
-                statusBadge.textContent = doc.estado;
-                
-                if (doc.estado === 'Válida') {
-                    statusBadge.className = 'badge badge-success';
-                } else if (doc.estado === 'Inválida') {
-                    statusBadge.className = 'badge badge-error';
-                } else {
-                    statusBadge.className = 'badge badge-outline';
-                }
-                
-                statusCell.appendChild(statusBadge);
-                row.appendChild(statusCell);
-                
-                // Observations cell
-                const obsCell = document.createElement('td');
-                obsCell.textContent = doc.observaciones || 'Ninguna';
-                row.appendChild(obsCell);
-                
-                // Date cell
-                const dateCell = document.createElement('td');
-                dateCell.textContent = doc.fecha_local || new Date(doc.fecha_subida).toLocaleString();
-                row.appendChild(dateCell);
-                
-                // Actions cell
-                const actionsCell = document.createElement('td');
-                actionsCell.className = 'actions-cell';
-                
-                // View button
-                const viewBtn = document.createElement('button');
-                viewBtn.className = 'btn btn-ghost btn-sm hover-lift';
-                viewBtn.innerHTML = '👁️ Ver';
-                viewBtn.setAttribute('aria-label', `Ver ${doc.nombre_archivo}`);
-                viewBtn.addEventListener('click', () => viewDocument(doc._id, doc.nombre_archivo));
-                
-                // Download button
-                const downloadBtn = document.createElement('button');
-                downloadBtn.className = 'btn btn-ghost btn-sm hover-lift';
-                downloadBtn.innerHTML = '⬇️ Descargar';
-                downloadBtn.setAttribute('aria-label', `Descargar ${doc.nombre_archivo}`);
-                downloadBtn.addEventListener('click', () => downloadDocument(doc._id, doc.nombre_archivo));
-                
-                // Update button
-                const updateBtn = document.createElement('button');
-                updateBtn.className = 'btn btn-ghost btn-sm hover-lift';
-                updateBtn.innerHTML = '✏️ Actualizar';
-                updateBtn.setAttribute('aria-label', `Actualizar ${doc.nombre_archivo}`);
-                updateBtn.addEventListener('click', () => openUpdateModal(doc));
-                
-                // Delete button
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn btn-ghost btn-sm btn-danger hover-lift';
-                deleteBtn.innerHTML = '🗑️ Eliminar';
-                deleteBtn.setAttribute('aria-label', `Eliminar ${doc.nombre_archivo}`);
-                deleteBtn.addEventListener('click', () => openDeleteModal(doc._id, doc.nombre_archivo));
-                
-                actionsCell.appendChild(viewBtn);
-                actionsCell.appendChild(downloadBtn);
-                actionsCell.appendChild(updateBtn);
-                actionsCell.appendChild(deleteBtn);
-                row.appendChild(actionsCell);
-                
-                tableBody.appendChild(row);
-            });
+    if (!documents || documents.length === 0) {
+        tableBody.innerHTML = '';
+        emptyState.style.display = 'flex';
+        return;
+    }
+    
+    tableBody.innerHTML = '';
+    emptyState.style.display = 'none';
+    
+    documents.forEach(doc => {
+        const row = document.createElement('tr');
+        row.setAttribute('data-id', doc._id);
+        row.className = 'animate-fadeIn';
+        
+        // File name cell
+        const nameCell = document.createElement('td');
+        nameCell.className = 'file-name';
+        nameCell.textContent = doc.nombre_archivo;
+        row.appendChild(nameCell);
+        
+        // Status cell
+        const statusCell = document.createElement('td');
+        const statusBadge = document.createElement('span');
+        statusBadge.textContent = doc.estado;
+        
+        if (doc.estado === 'Válida') {
+            statusBadge.className = 'badge badge-success';
+        } else if (doc.estado === 'Inválida') {
+            statusBadge.className = 'badge badge-error';
+        } else {
+            statusBadge.className = 'badge badge-outline';
         }
+        
+        statusCell.appendChild(statusBadge);
+        row.appendChild(statusCell);
+        
+        // Observations cell
+        const obsCell = document.createElement('td');
+        obsCell.textContent = doc.observaciones || 'Ninguna';
+        row.appendChild(obsCell);
+        
+        // Date cell
+        const dateCell = document.createElement('td');
+        dateCell.textContent = doc.fecha_local || new Date(doc.fecha_subida).toLocaleString();
+        row.appendChild(dateCell);
+        
+        // Email sent cell
+        const emailSentCell = document.createElement('td');
+        const emailSentBadge = document.createElement('span');
+        emailSentBadge.textContent = doc.email_enviado ? 'Enviado' : 'No Enviado';
+        
+        if (doc.email_enviado) {
+            emailSentBadge.className = 'badge badge-success';
+        } else {
+            emailSentBadge.className = 'badge badge-error';
+        }
+        
+        emailSentCell.appendChild(emailSentBadge);
+        row.appendChild(emailSentCell);
+        
+        // Actions cell
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'actions-cell';
+        
+        // View button
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'btn btn-ghost btn-sm hover-lift';
+        viewBtn.innerHTML = '👁️ Ver';
+        viewBtn.setAttribute('aria-label', `Ver ${doc.nombre_archivo}`);
+        viewBtn.addEventListener('click', () => viewDocument(doc._id, doc.nombre_archivo));
+        
+        // Download button
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'btn btn-ghost btn-sm hover-lift';
+        downloadBtn.innerHTML = '⬇️ Descargar';
+        downloadBtn.setAttribute('aria-label', `Descargar ${doc.nombre_archivo}`);
+        downloadBtn.addEventListener('click', () => downloadDocument(doc._id, doc.nombre_archivo));
+        
+        // Update button
+        const updateBtn = document.createElement('button');
+        updateBtn.className = 'btn btn-ghost btn-sm hover-lift';
+        updateBtn.innerHTML = '✏️ Actualizar';
+        updateBtn.setAttribute('aria-label', `Actualizar ${doc.nombre_archivo}`);
+        updateBtn.addEventListener('click', () => openUpdateModal(doc));
+        
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-ghost btn-sm btn-danger hover-lift';
+        deleteBtn.innerHTML = '🗑️ Eliminar';
+        deleteBtn.setAttribute('aria-label', `Eliminar ${doc.nombre_archivo}`);
+        deleteBtn.addEventListener('click', () => openDeleteModal(doc._id, doc.nombre_archivo));
+        
+        actionsCell.appendChild(viewBtn);
+        actionsCell.appendChild(downloadBtn);
+        actionsCell.appendChild(updateBtn);
+        actionsCell.appendChild(deleteBtn);
+        row.appendChild(actionsCell);
+        
+        tableBody.appendChild(row);
+    });
+}
 
         // View document
         function viewDocument(docId, fileName) {
@@ -467,6 +482,7 @@
             // Enable/disable observations based on status
             if (doc.estado === 'Inválida') {
                 updateObservations.disabled = false;
+                updateObservations.focus();
             } else {
                 updateObservations.disabled = true;
             }
@@ -690,4 +706,3 @@
     </script>
 </body>
 </html>
-
