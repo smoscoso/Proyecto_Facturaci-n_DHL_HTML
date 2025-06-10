@@ -76,6 +76,9 @@ def upload_document():
       # Insertar en la base de datos
       doc_id = db_handler.insert_document(document)
       
+      # Variable para rastrear si el email se envió correctamente
+      email_enviado = False
+      
       # Enviar email de confirmación
       try:
           subject = f"Factura recibida: {file_name}"
@@ -186,10 +189,20 @@ def upload_document():
           # Usar directamente el método send_email_with_binary para evitar crear archivos temporales
           email_sender.send_email_with_binary(email, subject, body, file_data, file_name, is_html=True)
           
+          # Marcar que el email se envió correctamente
+          email_enviado = True
+          
           logger.info(f"Email de confirmación enviado a {email} con archivo adjunto: {file_name}")
       except Exception as e:
           logger.error(f"Error enviando email de confirmación: {str(e)}")
           # No fallamos la operación completa si el email falla
+          email_enviado = False
+      
+      # Actualizar el estado de envío del correo en la base de datos
+      try:
+          db_handler.update_email_status(doc_id, email_enviado)
+      except Exception as e:
+          logger.error(f"Error actualizando estado de envío de correo: {str(e)}")
       
       return jsonify({'success': True, 'doc_id': doc_id})
   
@@ -327,6 +340,9 @@ def update_status():
       # Obtener el documento actualizado
       document = db_handler.get_document_by_id(doc_id)
       
+      # Variable para rastrear si el email se envió correctamente
+      email_enviado = False
+      
       # Enviar email de notificación
       try:
           email_to = document.get('email')
@@ -440,10 +456,21 @@ def update_status():
               # Usar directamente el método send_email_with_binary para evitar crear archivos temporales
               if 'archivo' in document:
                   email_sender.send_email_with_binary(email_to, subject, body, document['archivo'], file_name, is_html=True)
+                  email_enviado = True
                   logger.info(f"Email de actualización enviado a {email_to} con archivo adjunto: {file_name}")
+              else:
+                  email_enviado = False
+                  logger.error(f"No se encontró el archivo para el documento {doc_id}")
       except Exception as e:
           logger.error(f"Error enviando email de actualización: {str(e)}")
           # No fallamos la operación completa si el email falla
+          email_enviado = False
+      
+      # Actualizar el estado de envío del correo en la base de datos
+      try:
+          db_handler.update_email_status(doc_id, email_enviado)
+      except Exception as e:
+          logger.error(f"Error actualizando estado de envío de correo: {str(e)}")
       
       return jsonify({'success': True})
   
@@ -486,4 +513,3 @@ if __name__ == '__main__':
       logger.error(f"Error al conectar a la base de datos: {str(e)}")
   
   app.run(host='0.0.0.0', port=5000)
-
